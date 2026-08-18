@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <!-- 关键：禁止手机浏览器缩放，适配刘海屏安全区 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>七夕快乐，我的唯一</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            width: 100%; height: 100%;
+            background: #000;
+            overflow: hidden;
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            color: #fff;
+        }
+        /* 全屏容器，适配iPhone刘海屏 */
+        .screen-wrapper {
+            position: relative;
+            width: 100%; height: 100%;
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+        /* 视频全屏铺满，像手机壁纸一样 */
+        video {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            object-fit: cover;
+            background: #000;
+            z-index: 1;
+        }
+        /* 爱心粒子背景画布 */
+        canvas {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 2;
+            pointer-events: none; /* 让点击事件穿透，不影响视频播放 */
+        }
+        /* 提示文字 - 居中 + 放大 + 发光效果 */
+        .tip {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            font-size: 3vw !important; /* 🌟 已调整为 3vw，精致小巧 */
+            font-weight: 500;
+            letter-spacing: 2px;
+            opacity: 0.9;
+            z-index: 3;
+            pointer-events: none;
+            text-shadow: 0 0 10px rgba(255, 117, 140, 0.8), 0 2px 4px rgba(0,0,0,0.6);
+            transition: opacity 0.5s ease;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+<div class="screen-wrapper">
+    <!--
+      ⚠️ 请将 src 替换为你自己上传的视频路径
+      例如：src="renxi/my-video.mp4"
+    -->
+    <video id="myVideo" playsinline webkit-playsinline loop muted>
+        <source src="renxi/love.mp4" type="video/mp4">
+    </video>
+
+    <!-- 🎵 1. 新增：音频标签，建议放在视频下方，同样设置 loop 循环播放 -->
+    <audio id="myAudio" loop preload="auto">
+        <!-- ⚠️ 请将 src 替换为你自己的背景音乐路径 -->
+        <source src="renxi/love1.mp3" type="audio/mpeg">
+    </audio>
+
+    <canvas id="heartCanvas"></canvas>
+    <div class="tip" id="tipText">💌 小猪猪快点点一下</div>
+</div>
+
+<script>
+    const video = document.getElementById('myVideo');
+    const audio = document.getElementById('myAudio'); // 🎵 2. 获取音频元素
+    const tip = document.getElementById('tipText');
+    const canvas = document.getElementById('heartCanvas');
+    const ctx = canvas.getContext('2d');
+    let width, height, hearts = [];
+
+    // 3. 修改：视频与音频的同步交互逻辑
+    document.body.addEventListener('click', () => {
+        if (video.paused) {
+            // 点击时同时播放视频和音频
+            video.play();
+            audio.play();
+            tip.style.opacity = '0'; // 播放后隐藏提示
+        } else {
+            // 再次点击同时暂停视频和音频
+            video.pause();
+            audio.pause();
+            tip.style.opacity = '0.9'; // 暂停时显示提示
+        }
+    });
+
+    // 🎵 4. 优化：防止视频和音频因为网络延迟导致不同步
+    // 如果视频重新开始播放，音频也跟着回到起点
+    video.addEventListener('play', () => {
+        if (Math.abs(video.currentTime - audio.currentTime) > 0.5) {
+            audio.currentTime = video.currentTime;
+        }
+    });
+
+    // 5. 浪漫爱心粒子背景代码（保持你原来的逻辑不变）
+    function resize() {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    class Heart {
+        constructor() { this.reset(); }
+        reset() {
+            this.x = Math.random() * width;
+            this.y = height + Math.random() * 100;
+            this.size = Math.random() * 15 + 5;
+            this.speedY = Math.random() * 1 + 0.5;
+            this.speedX = Math.random() * 0.5 - 0.25;
+            this.opacity = Math.random() * 0.5 + 0.2;
+            this.color = `rgba(255, ${Math.floor(Math.random()*100 + 100)}, ${Math.floor(Math.random()*100 + 100)}, ${this.opacity})`;
+        }
+        update() {
+            this.y -= this.speedY;
+            this.x += this.speedX;
+            if (this.y < -20) this.reset();
+        }
+        draw() {
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            ctx.scale(this.size / 10, this.size / 10);
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.bezierCurveTo(-5, -5, -10, 0, 0, 10);
+            ctx.bezierCurveTo(10, 0, 5, -5, 0, 0);
+            ctx.fillStyle = this.color;
+            ctx.fill();
+            ctx.restore();
+        }
+    }
+
+    for (let i = 0; i < 50; i++) hearts.push(new Heart());
+    function animate() {
+        ctx.clearRect(0, 0, width, height);
+        hearts.forEach(h => { h.update(); h.draw(); });
+        requestAnimationFrame(animate);
+    }
+    animate();
+</script>
+</body>
+</html>
